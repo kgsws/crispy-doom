@@ -257,7 +257,7 @@ void S_Init(int sfxVolume, int musicVolume)
         I_SetOPLDriverVer(opl_doom_1_9);
     }
 
-    I_PrecacheSounds(S_sfx, NUMSFX);
+    I_PrecacheSounds(S_sfx, numsfx);
 
     S_SetSfxVolume(sfxVolume);
     S_SetMusicVolume(musicVolume);
@@ -279,7 +279,7 @@ void S_Init(int sfxVolume, int musicVolume)
     mus_paused = 0;
 
     // Note that sounds have not been cached (yet).
-    for (i=1 ; i<NUMSFX ; i++)
+    for (i=1 ; i<numsfx ; i++)
     {
         S_sfx[i].lumpnum = S_sfx[i].usefulness = -1;
     }
@@ -665,7 +665,7 @@ void S_StartSound(void *origin_p, int sfx_id)
         return;
     }
     // check for bogus sound #
-    if (sfx_id < 1 || sfx_id > NUMSFX)
+    if (sfx_id < 1 || sfx_id > numsfx)
     {
         I_Error("Bad sfx #: %d", sfx_id);
     }

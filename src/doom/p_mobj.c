@@ -36,6 +36,8 @@
 
 #include "doomstat.h"
 
+#include "doomhack.h"
+
 
 void G_PlayerReborn (int player);
 void P_SpawnMapThing (mapthing_t*	mthing);
@@ -577,6 +579,15 @@ void P_MobjThinker (mobj_t* mobj)
         mobj->oldangle = mobj->angle;
     }
 
+    // [kg] DOOMHACK: touch special thing
+    if(mobj->flags & MF_TOUCHED)
+    {
+	mobj->flags &= ~MF_TOUCHED;
+	P_SetMobjState(mobj, mobj->info->touchstate);
+	if(mobj->thinker.function.acv == (actionf_v)(-1))
+		return;
+    }
+
     // momentum movement
     if (mobj->momx
 	|| mobj->momy
@@ -1020,11 +1031,18 @@ void P_SpawnMapThing (mapthing_t* mthing)
     }
 
     // find which type to spawn
+    if(doomhack_active)
+    {
+	// backward search
+	for(i = nummobjtypes - 1; i >= 0; i--)
+		if(mthing->type == mobjinfo[i].doomednum)
+			break;
+    } else
     for (i=0 ; i< NUMMOBJTYPES ; i++)
 	if (mthing->type == mobjinfo[i].doomednum)
 	    break;
 	
-    if (i==NUMMOBJTYPES)
+    if(i >= nummobjtypes || i < 0)
     {
 	// [crispy] ignore unknown map things
 	fprintf (stderr, "P_SpawnMapThing: Unknown type %i at (%i, %i)\n",

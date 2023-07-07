@@ -145,8 +145,6 @@ void A_RandomJump(mobj_t *mo, player_t *player, pspdef_t *psp)
 	{
 		if (Crispy_Random() < psp->state->misc2)
 		{
-			extern void P_SetPsprite (player_t *player, int position, statenum_t stnum);
-
 			P_SetPsprite(player, psp - &player->psprites[0], psp->state->misc1);
 		}
 	}
@@ -198,11 +196,13 @@ void A_LineEffect(mobj_t *mo)
 void A_FireOldBFG(mobj_t *mobj, player_t *player, pspdef_t *psp)
 {
   int type = MT_PLASMA1;
+  int ammo;
   extern void P_CheckMissileSpawn (mobj_t* th);
 
   if (!player) return; // [crispy] let pspr action pointers get called from mobj states
 
-  player->ammo[weaponinfo[player->readyweapon].ammo]--;
+  ammo = weaponinfo[player->readyweapon].ammo;
+  P_SetAmmoCount(player, ammo, P_GetAmmoCount(player, ammo) - 1);
 
   player->extralight = 2;
 

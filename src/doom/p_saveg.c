@@ -769,19 +769,19 @@ static void saveg_read_player_t(player_t *str)
     // boolean weaponowned[NUMWEAPONS];
     for (i=0; i<NUMWEAPONS; ++i)
     {
-        str->weaponowned[i] = saveg_read32();
+        str->orwa.weapon[i] = saveg_read32();
     }
 
     // int ammo[NUMAMMO];
     for (i=0; i<NUMAMMO; ++i)
     {
-        str->ammo[i] = saveg_read32();
+        str->orwa.ammonow[i] = saveg_read32();
     }
 
     // int maxammo[NUMAMMO];
     for (i=0; i<NUMAMMO; ++i)
     {
-        str->maxammo[i] = saveg_read32();
+        str->orwa.ammomax[i] = saveg_read32();
     }
 
     // int attackdown;
@@ -900,19 +900,19 @@ static void saveg_write_player_t(player_t *str)
     // boolean weaponowned[NUMWEAPONS];
     for (i=0; i<NUMWEAPONS; ++i)
     {
-        saveg_write32(str->weaponowned[i]);
+        saveg_write32(str->orwa.weapon[i]);
     }
 
     // int ammo[NUMAMMO];
     for (i=0; i<NUMAMMO; ++i)
     {
-        saveg_write32(str->ammo[i]);
+        saveg_write32(str->orwa.ammonow[i]);
     }
 
     // int maxammo[NUMAMMO];
     for (i=0; i<NUMAMMO; ++i)
     {
-        saveg_write32(str->maxammo[i]);
+        saveg_write32(str->orwa.ammomax[i]);
     }
 
     // int attackdown;

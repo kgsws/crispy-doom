@@ -36,6 +36,8 @@
 #include "p_pspr.h"
 #include "a11y.h" // [crispy] A11Y
 
+#include "doomhack.h"
+
 #define LOWERSPEED		FRACUNIT*6
 #define RAISESPEED		FRACUNIT*6
 
@@ -58,6 +60,10 @@ static const int recoil_values[] = {
 // [crispy] add weapon recoil pitch
 void A_Recoil (player_t* player)
 {
+	if(player->readyweapon >= NUMWEAPONS)
+		// TODO: generalise for DOOMHACK
+		return;
+
 	if (player && crispy->pitch)
 	{
 		player->recoilpitch = recoil_values[player->readyweapon];
@@ -194,16 +200,12 @@ boolean P_CheckAmmo (player_t* player)
     ammo = weaponinfo[player->readyweapon].ammo;
 
     // Minimal amount for one shot varies.
-    if (player->readyweapon == wp_bfg)
-	count = deh_bfg_cells_per_shot;
-    else if (player->readyweapon == wp_supershotgun)
-	count = 2;	// Double barrel.
-    else
-	count = 1;	// Regular.
+    // [kg] weapon info now holds minimum ammo for each weapon, even BFG with DEHACKED
+    count = weaponinfo[player->readyweapon].ammo_use;
 
     // [crispy] force weapon switch if weapon not owned
     // only relevant when removing current weapon with TNTWEAPx cheat
-    if (!player->weaponowned[player->readyweapon])
+    if (!P_CheckWeaponOwned(player, player->readyweapon))
     {
 	ammo = am_clip; // [crispy] at least not am_noammo, see below
 	count = INT_MAX;
@@ -211,51 +213,56 @@ boolean P_CheckAmmo (player_t* player)
 
     // Some do not need ammunition anyway.
     // Return if current ammunition sufficient.
-    if (ammo == am_noammo || player->ammo[ammo] >= count)
+    if (ammo >= numammo || P_GetAmmoCount(player, ammo) >= count)
 	return true;
-		
+
+    // [kg] generalised selection for DOOMHACK
+    if(doomhack_active)
+    {
+	player->pendingweapon = P_CheckBestWeapon(player);
+    } else
     // Out of ammo, pick a weapon to change to.
     // Preferences are set here.
     do
     {
-	if (player->weaponowned[wp_plasma]
-	    && player->ammo[am_cell]
+	if (player->orwa.weapon[wp_plasma]
+	    && player->orwa.ammonow[am_cell]
 	    && (gamemode != shareware) )
 	{
 	    player->pendingweapon = wp_plasma;
 	}
-	else if (player->weaponowned[wp_supershotgun] 
-		 && player->ammo[am_shell]>2
+	else if (player->orwa.weapon[wp_supershotgun] 
+		 && player->orwa.ammonow[am_shell]>2
 		 && (crispy->havessg) )
 	{
 	    player->pendingweapon = wp_supershotgun;
 	}
-	else if (player->weaponowned[wp_chaingun]
-		 && player->ammo[am_clip])
+	else if (player->orwa.weapon[wp_chaingun]
+		 && player->orwa.ammonow[am_clip])
 	{
 	    player->pendingweapon = wp_chaingun;
 	}
-	else if (player->weaponowned[wp_shotgun]
-		 && player->ammo[am_shell])
+	else if (player->orwa.weapon[wp_shotgun]
+		 && player->orwa.ammonow[am_shell])
 	{
 	    player->pendingweapon = wp_shotgun;
 	}
 	// [crispy] allow to remove the pistol via TNTWEAP2
-	else if (player->ammo[am_clip] && player->weaponowned[wp_pistol])
+	else if (player->orwa.ammonow[am_clip] && player->orwa.weapon[wp_pistol])
 	{
 	    player->pendingweapon = wp_pistol;
 	}
-	else if (player->weaponowned[wp_chainsaw])
+	else if (player->orwa.weapon[wp_chainsaw])
 	{
 	    player->pendingweapon = wp_chainsaw;
 	}
-	else if (player->weaponowned[wp_missile]
-		 && player->ammo[am_misl])
+	else if (player->orwa.weapon[wp_missile]
+		 && player->orwa.ammonow[am_misl])
 	{
 	    player->pendingweapon = wp_missile;
 	}
-	else if (player->weaponowned[wp_bfg]
-		 && player->ammo[am_cell]>40
+	else if (player->orwa.weapon[wp_bfg]
+		 && player->orwa.ammonow[am_cell] > 40
 		 && (gamemode != shareware) )
 	{
 	    player->pendingweapon = wp_bfg;
@@ -280,15 +287,19 @@ boolean P_CheckAmmo (player_t* player)
 //
 // P_FireWeapon.
 //
-void P_FireWeapon (player_t* player)
+void P_FireWeapon (player_t* player, int newstate)
 {
-    statenum_t	newstate;
-	
     if (!P_CheckAmmo (player))
 	return;
-	
-    P_SetMobjState (player->mo, S_PLAY_ATK1);
-    newstate = weaponinfo[player->readyweapon].atkstate;
+
+    if(doomhack_active)
+	P_SetMobjState(player->mo, player->mo->info->missilestate);
+    else
+	P_SetMobjState(player->mo, S_PLAY_ATK1);
+
+    if(newstate < 0)
+	newstate = weaponinfo[player->readyweapon].atkstate;
+
     P_SetPsprite (player, ps_weapon, newstate);
     P_NoiseAlert (player->mo, player->mo);
 }
@@ -358,7 +369,7 @@ A_WeaponReady
 		 && player->readyweapon != wp_bfg) )
 	{
 	    player->attackdown = true;
-	    P_FireWeapon (player);		
+	    P_FireWeapon(player, -1);
 	    return;
 	}
     }
@@ -393,7 +404,7 @@ void A_ReFire
 	 && player->health)
     {
 	player->refire++;
-	P_FireWeapon (player);
+	P_FireWeapon(player, -1);
     }
     else
     {
@@ -605,18 +616,28 @@ A_Saw
 
 static void DecreaseAmmo(player_t *player, int ammonum, int amount)
 {
+    if(doomhack_active)
+    {
+	int count = P_GetAmmoCount(player, ammonum);
+	count -= amount;
+	if(count < 0)
+		count = 0;
+	P_SetAmmoCount(player, ammonum, count);
+	return;
+    }
+
     if (ammonum < NUMAMMO)
     {
-        player->ammo[ammonum] -= amount;
+        player->orwa.ammonow[ammonum] -= amount;
         // [crispy] never allow less than zero ammo
-        if (player->ammo[ammonum] < 0)
+        if (player->orwa.ammonow[ammonum] < 0)
         {
-            player->ammo[ammonum] = 0;
+            player->orwa.ammonow[ammonum] = 0;
         }
     }
     else
     {
-        player->maxammo[ammonum - NUMAMMO] -= amount;
+        player->orwa.ammomax[ammonum - NUMAMMO] -= amount;
     }
 }
 
@@ -845,7 +866,7 @@ A_FireCGun
     if (!player) return; // [crispy] let pspr action pointers get called from mobj states
     S_StartSound (player->so, sfx_pistol); // [crispy] weapon sound source
 
-    if (!player->ammo[weaponinfo[player->readyweapon].ammo])
+    if(!P_GetAmmoCount(player, weaponinfo[player->readyweapon].ammo))
 	return;
 		
     P_SetMobjState (player->mo, S_PLAY_ATK2);

@@ -194,6 +194,9 @@ typedef enum
     // Hmm ???.
     MF_TRANSSHIFT	= 26,
 
+    // [kg] for DOOMHACK; MF_SPECIAL thig was touched
+    MF_TOUCHED		= 0x10000000,
+
     // [NS] Beta projectile bouncing.
     MF_BOUNCES		= 0x20000000,
 

@@ -645,6 +645,19 @@ boolean W_IsIWADLump(const lumpinfo_t *lump)
 	return lump->wad_file == lumpinfo[0]->wad_file;
 }
 
+// [kg] scan for all lumps with this name
+void W_ForEach(const char *name, int (*cb)(int))
+{
+	for(int i = 0; i < numlumps; i++)
+	{
+		if(!strncasecmp(lumpinfo[i]->name, name, 8))
+		{
+			if(cb(i))
+				return;
+		}
+	}
+}
+
 // [crispy] dump lump data into a new LMP file
 int W_LumpDump (const char *lumpname)
 {

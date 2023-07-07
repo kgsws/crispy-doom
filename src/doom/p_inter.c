@@ -39,6 +39,8 @@
 
 #include "p_inter.h"
 
+#include "doomhack.h"
+
 
 #define BONUSADD	6
 
@@ -47,8 +49,27 @@
 
 // a weapon is found with two clip loads,
 // a big item has five clip loads
-int	maxammo[NUMAMMO] = {200, 50, 300, 50};
-int	clipammo[NUMAMMO] = {10, 4, 20, 1};
+int numammo = NUMAMMO;
+
+ammoinfo_t ammoinfo[MAX_AMMO_COUNT] =
+{
+	{
+		.clip = 10,
+		.amax = 200,
+	},
+	{
+		.clip = 4,
+		.amax = 50,
+	},
+	{
+		.clip = 20,
+		.amax = 300,
+	},
+	{
+		.clip = 1,
+		.amax = 50,
+	},
+};
 
 
 //
@@ -70,20 +91,25 @@ P_GiveAmmo
   boolean	dropped ) // [NS] Dropped ammo/weapons give half as much.
 {
     int		oldammo;
-	
-    if (ammo == am_noammo)
+    int		maxammo;
+    int		count;
+
+    if(ammo >= numammo)
 	return false;
-		
-    if (ammo >= NUMAMMO)
-	I_Error ("P_GiveAmmo: bad type %i", ammo);
-		
-    if ( player->ammo[ammo] == player->maxammo[ammo]  )
+
+    if(!num)
+	return true;
+
+    oldammo = P_GetAmmoCount(player, ammo);
+    maxammo = P_GetAmmoMax(player, ammo);
+
+    if(oldammo == maxammo)
 	return false;
 		
     if (num)
-	num *= clipammo[ammo];
+	num *= ammoinfo[ammo].clip;
     else
-	num = clipammo[ammo]/2;
+	num = ammoinfo[ammo].clip / 2;
     
     if (gameskill == sk_baby
 	|| gameskill == sk_nightmare
@@ -102,12 +128,13 @@ P_GiveAmmo
 		if (!num)
 			num = 1;
 	}
-		
-    oldammo = player->ammo[ammo];
-    player->ammo[ammo] += num;
 
-    if (player->ammo[ammo] > player->maxammo[ammo])
-	player->ammo[ammo] = player->maxammo[ammo];
+    count = oldammo + num;
+
+    if(count > maxammo)
+	count = maxammo;
+
+    P_SetAmmoCount(player, ammo, count);
 
     // If non zero ammo, 
     // don't change up weapons,
@@ -118,45 +145,51 @@ P_GiveAmmo
     // We were down to zero,
     // so select a new weapon.
     // Preferences are not user selectable.
-    switch (ammo)
-    {
-      case am_clip:
-	if (player->readyweapon == wp_fist)
+	if(doomhack_active)
 	{
-	    if (player->weaponowned[wp_chaingun])
-		player->pendingweapon = wp_chaingun;
-	    else
-		player->pendingweapon = wp_pistol;
-	}
-	break;
-	
-      case am_shell:
-	if (player->readyweapon == wp_fist
-	    || player->readyweapon == wp_pistol)
+		// TODO
+	} else
 	{
-	    if (player->weaponowned[wp_shotgun])
-		player->pendingweapon = wp_shotgun;
+		switch (ammo)
+		{
+			case am_clip:
+				if (player->readyweapon == wp_fist)
+				{
+					if (player->orwa.weapon[wp_chaingun])
+						player->pendingweapon = wp_chaingun;
+					else
+						player->pendingweapon = wp_pistol;
+				}
+			break;
+
+			case am_shell:
+				if (player->readyweapon == wp_fist
+					|| player->readyweapon == wp_pistol)
+				{
+					if (player->orwa.weapon[wp_shotgun])
+						player->pendingweapon = wp_shotgun;
+				}
+			break;
+
+			case am_cell:
+				if (player->readyweapon == wp_fist
+					|| player->readyweapon == wp_pistol)
+				{
+					if (player->orwa.weapon[wp_plasma])
+						player->pendingweapon = wp_plasma;
+				}
+			break;
+
+			case am_misl:
+				if (player->readyweapon == wp_fist)
+				{
+					if (player->orwa.weapon[wp_missile])
+						player->pendingweapon = wp_missile;
+				}
+			default:
+			break;
+		}
 	}
-	break;
-	
-      case am_cell:
-	if (player->readyweapon == wp_fist
-	    || player->readyweapon == wp_pistol)
-	{
-	    if (player->weaponowned[wp_plasma])
-		player->pendingweapon = wp_plasma;
-	}
-	break;
-	
-      case am_misl:
-	if (player->readyweapon == wp_fist)
-	{
-	    if (player->weaponowned[wp_missile])
-		player->pendingweapon = wp_missile;
-	}
-      default:
-	break;
-    }
 	
     return true;
 }
@@ -194,11 +227,11 @@ P_GiveWeapon
 	 && !dropped )
     {
 	// leave placed weapons forever on net games
-	if (player->weaponowned[weapon])
+	if(P_CheckWeaponOwned(player, weapon))
 	    return false;
 
 	player->bonuscount += BONUSADD;
-	player->weaponowned[weapon] = true;
+	P_SetWeaponOwned(player, weapon, 1);
 
 	if (deathmatch)
 	    P_GiveAmmo (player, weaponinfo[weapon].ammo, 5, false);
@@ -213,7 +246,7 @@ P_GiveWeapon
 	return false;
     }
 	
-    if (weaponinfo[weapon].ammo != am_noammo)
+    if (weaponinfo[weapon].ammo < numammo)
     {
 	// give one clip with a dropped weapon,
 	// two clips with a found weapon
@@ -229,12 +262,12 @@ P_GiveWeapon
     else
 	gaveammo = false;
 	
-    if (player->weaponowned[weapon])
+    if(P_CheckWeaponOwned(player, weapon))
 	gaveweapon = false;
     else
     {
 	gaveweapon = true;
-	player->weaponowned[weapon] = true;
+	P_SetWeaponOwned(player, weapon, 1);
 	player->pendingweapon = weapon;
     }
 	
@@ -369,6 +402,17 @@ P_TouchSpecialThing
     const boolean dropped = ((special->flags & MF_DROPPED) != 0);
 		
     delta = special->z - toucher->z;
+
+    if(special->info->touchstate)
+    {
+	// [kg] DOOMHACK specials
+	if(delta > toucher->height || delta < -special->height)
+		return;
+	special->target = toucher;
+	// To avoid many issues with collision code defer state change for later.
+	special->flags |= MF_TOUCHED;
+	return;
+    }
 
     if (delta > toucher->height
 	|| delta < -8*FRACUNIT)
@@ -636,12 +680,12 @@ P_TouchSpecialThing
       case SPR_BPAK:
 	if (!player->backpack)
 	{
-	    for (i=0 ; i<NUMAMMO ; i++)
-		player->maxammo[i] *= 2;
+	    for(i = 0; i < numammo; i++)
+		P_SetAmmoMax(player, i, ammoinfo[i].amax_bkpk);
 	    player->backpack = true;
 	}
-	for (i=0 ; i<NUMAMMO ; i++)
-	    P_GiveAmmo (player, i, 1, false);
+	for(i = 0; i < numammo; i++)
+	    P_GiveAmmo (player, i, ammoinfo[i].clip_bkpk, false);
 	player->message = DEH_String(GOTBACKPACK);
 	break;
 	
@@ -876,7 +920,8 @@ P_DamageMobj
     // Some close combat weapons should not
     // inflict thrust and push the victim out of reach,
     // thus kick away unless using the chainsaw.
-    if (inflictor
+    if( target->info->mass // [kg] for DOOMHACK; this would crash anyway
+        && inflictor
 	&& !(target->flags & MF_NOCLIP)
 	&& (!source
 	    || !source->player

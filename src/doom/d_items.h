@@ -33,9 +33,17 @@ typedef struct
     int		readystate;
     int		atkstate;
     int		flashstate;
-
+    int         ammo_use;
+    int         sel_order;
+    int         slot;
+    struct
+    {
+	void *ptr;
+	int len;
+    } name;
 } weaponinfo_t;
 
-extern  weaponinfo_t    weaponinfo[NUMWEAPONS];
+extern int numweapons;
+extern weaponinfo_t weaponinfo[MAX_WEAPON_COUNT];
 
 #endif

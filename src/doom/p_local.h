@@ -80,7 +80,9 @@ void P_RemoveThinker (thinker_t* thinker);
 void P_SetupPsprites (player_t* curplayer);
 void P_MovePsprites (player_t* curplayer);
 void P_DropWeapon (player_t* player);
-
+void P_SetPsprite (player_t* player, int position, statenum_t stnum);
+boolean P_CheckAmmo (player_t* player);
+void P_FireWeapon (player_t* player, int newstate);
 
 //
 // P_USER
@@ -88,7 +90,14 @@ void P_DropWeapon (player_t* player);
 #define MLOOKUNIT	8
 #define PLAYER_SLOPE(a)	((((a)->lookdir / MLOOKUNIT) << FRACBITS) / 173)
 void	P_PlayerThink (player_t* player);
-
+boolean	P_CheckWeaponOwned(player_t*, int);
+void	P_SetWeaponOwned(player_t*, int, int);
+unsigned int	P_WeaponOwnedBits(player_t*);
+int	P_GetAmmoCount(player_t *pl, int idx);
+void	P_SetAmmoCount(player_t *pl, int idx, int count);
+int	P_GetAmmoMax(player_t *pl, int idx);
+void	P_SetAmmoMax(player_t *pl, int idx, int count);
+int	P_CheckBestWeapon(player_t*);
 
 //
 // P_MOBJ
@@ -246,6 +255,10 @@ extern fixed_t attackrange;
 extern fixed_t	topslope;
 extern fixed_t	bottomslope;
 
+// [kg] DOOMHACK hitscan extra
+extern int la_pufftype;
+extern fixed_t la_zoffs;
+
 
 fixed_t
 P_AimLineAttack
@@ -292,8 +305,22 @@ extern int st_keyorskull[3];
 //
 // P_INTER
 //
-extern int		maxammo[NUMAMMO];
-extern int		clipammo[NUMAMMO];
+typedef struct
+{
+	int clip;
+	int amax;
+	int clip_bkpk;
+	int amax_bkpk;
+	struct
+	{
+		void *ptr;
+		int len;
+	} name;
+} ammoinfo_t;
+
+extern int numammo;
+extern ammoinfo_t ammoinfo[MAX_AMMO_COUNT];
+
 
 void
 P_TouchSpecialThing
@@ -306,6 +333,13 @@ P_DamageMobj
   mobj_t*	inflictor,
   mobj_t*	source,
   int		damage );
+
+boolean
+P_GiveAmmo
+( player_t*	player,
+  ammotype_t	ammo,
+  int		num,
+  boolean	dropped );
 
 
 //

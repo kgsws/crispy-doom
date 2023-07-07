@@ -113,9 +113,23 @@ typedef struct player_s
     // Is wp_nochange if not changing.
     weapontype_t	pendingweapon;
 
-    int                 weaponowned[NUMWEAPONS];
-    int			ammo[NUMAMMO];
-    int			maxammo[NUMAMMO];
+    union
+    {
+	// [kg] without DOOMHACK
+	struct
+	{
+		int weapon[NUMWEAPONS];
+		int ammonow[NUMAMMO];
+		int ammomax[NUMAMMO];
+	} orwa;
+	// [kg] with DOOMHACK
+	struct
+	{
+		unsigned int weapon; // bitmask; MAX_WEAPON_COUNT
+		unsigned short ammonow[MAX_AMMO_COUNT];
+		unsigned short ammomax[MAX_AMMO_COUNT];
+	} dhwa;
+    };
 
     // True if button down last tic.
     int			attackdown;

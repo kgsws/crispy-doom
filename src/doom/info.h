@@ -184,7 +184,9 @@ typedef enum
     SPR_SP70, SPR_SP71, SPR_SP72, SPR_SP73, SPR_SP74, SPR_SP75, SPR_SP76, SPR_SP77, SPR_SP78, SPR_SP79,
     SPR_SP80, SPR_SP81, SPR_SP82, SPR_SP83, SPR_SP84, SPR_SP85, SPR_SP86, SPR_SP87, SPR_SP88, SPR_SP89,
     SPR_SP90, SPR_SP91, SPR_SP92, SPR_SP93, SPR_SP94, SPR_SP95, SPR_SP96, SPR_SP97, SPR_SP98, SPR_SP99,
-    NUMSPRITES
+    NUMSPRITES,
+    // [kg] even more for DOOMHACK
+    MAX_SPRITE_COUNT = 511
 
 } spritenum_t;
 
@@ -1243,10 +1245,13 @@ typedef struct
     statenum_t nextstate;
     int misc1;
     int misc2;
+    void *args; // [kg] DOOMHACK
 } state_t;
 
-extern state_t	states[NUMSTATES];
-extern const char *sprnames[];
+extern int numstates;
+extern state_t states_code[NUMSTATES];
+extern state_t *states;
+extern const char *sprnames[MAX_SPRITE_COUNT+1];
 
 typedef enum {
     MT_NULL = -1, // [crispy] null/invalid mobj (zero is reserved for MT_PLAYER)
@@ -1459,9 +1464,18 @@ typedef struct
     int minmissilechance;
     // [crispy] multiplier for likelihood of a missile attack (generaliz. for various)
     int missilechancemult;
-
+    // [kg] MF_SPECIAL touch state
+    int	touchstate;
+    // [kg] DOOMHACK thing name
+    struct
+    {
+	void *ptr;
+	int len;
+    } name;
 } mobjinfo_t;
 
-extern mobjinfo_t mobjinfo[NUMMOBJTYPES];
+extern int nummobjtypes;
+extern mobjinfo_t mobjinfo_code[NUMMOBJTYPES];
+extern mobjinfo_t *mobjinfo;
 
 #endif

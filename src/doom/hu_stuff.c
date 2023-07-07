@@ -51,6 +51,8 @@
 #include "v_video.h" // [crispy] V_DrawPatch() et al.
 #include "v_trans.h" // [crispy] colored kills/items/secret/etc. messages
 
+#include "p_local.h" // [kg] numammo
+
 //
 // Locally used constants, shortcuts.
 //
@@ -787,7 +789,7 @@ static void HU_DrawCrosshair (void)
     static patch_t*	patch;
     extern byte *R_LaserspotColor (void);
 
-    if (weaponinfo[plr->readyweapon].ammo == am_noammo ||
+    if (weaponinfo[plr->readyweapon].ammo >= numammo ||
         plr->playerstate != PST_LIVE ||
         (automapactive && !crispy->automapoverlay) ||
         menuactive ||

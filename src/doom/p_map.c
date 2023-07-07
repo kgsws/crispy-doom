@@ -918,6 +918,10 @@ fixed_t		aimslope;
 
 extern degenmobj_t *laserspot;
 
+// [kg] DOOMHACK hitscan extra
+int la_pufftype = MT_PUFF;
+fixed_t la_zoffs;
+
 //
 // PTR_AimTraverse
 // Sets linetaget and aimslope when a target is aimed at.
@@ -1134,6 +1138,13 @@ boolean PTR_ShootTraverse (intercept_t* in)
 	    return false;
 	}
 
+	// [kg] DOOMHACK puff
+	if(la_pufftype != MT_PUFF)
+	{
+		P_SpawnMobj(x, y, z, la_pufftype);
+		return false;
+	}
+
 	// Spawn bullet puffs.
 	P_SpawnPuffSafe (x, y, z, safe);
 	
@@ -1187,12 +1198,41 @@ boolean PTR_ShootTraverse (intercept_t* in)
 	return false;
     }
 
-    // Spawn bullet puffs or blod spots,
-    // depending on target type.
-    if (in->d.thing->flags & MF_NOBLOOD)
-	P_SpawnPuff (x,y,z);
-    else
-	P_SpawnBlood (x,y,z, la_damage, th); // [crispy] pass thing type
+    // [kg] DOOMHACK puff
+    if(la_pufftype != MT_PUFF)
+    {
+	mobjinfo_t *info = mobjinfo + la_pufftype;
+	mobj_t *puff;
+	int32_t state = -1;
+
+	if(th->flags & MF_NOBLOOD)
+	{
+		if(info->xdeathstate)
+			state = info->xdeathstate;
+		else
+			state = 0; // this is spawnstate
+	} else
+	{
+		if(info->deathstate)
+			state = info->deathstate;
+		P_SpawnBlood(x, y, z, la_damage, th);
+	}
+
+	if(state >= 0)
+	{
+		puff = P_SpawnMobj(x, y, z, la_pufftype);
+		if(state > 0)
+			P_SetMobjState(puff, state);
+	}
+    } else
+    {
+	// Spawn bullet puffs or blod spots,
+	// depending on target type.
+	if(in->d.thing->flags & MF_NOBLOOD)
+		P_SpawnPuff (x,y,z);
+	else
+		P_SpawnBlood (x,y,z, la_damage, th); // [crispy] pass thing type
+    }
 
     if (la_damage)
 	P_DamageMobj (th, shootthing, shootthing, la_damage);
@@ -1223,6 +1263,7 @@ P_AimLineAttack
     x2 = t1->x + (distance>>FRACBITS)*finecosine[angle];
     y2 = t1->y + (distance>>FRACBITS)*finesine[angle];
     shootz = t1->z + (t1->height>>1) + 8*FRACUNIT;
+    shootz += la_zoffs;
 
     // can't shoot outside view angles
     topslope = (ORIGHEIGHT/2)*FRACUNIT/(ORIGWIDTH/2);
@@ -1270,6 +1311,7 @@ P_LineAttack
     x2 = t1x + (distance>>FRACBITS)*finecosine[angle];
     y2 = t1y + (distance>>FRACBITS)*finesine[angle];
     shootz = (damage == INT_MIN) ? viewz : t1->z + (t1->height>>1) + 8*FRACUNIT;
+    shootz += la_zoffs;
     attackrange = distance;
     aimslope = slope;
 		

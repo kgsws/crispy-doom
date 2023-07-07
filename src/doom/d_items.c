@@ -34,88 +34,115 @@
 // atkstate, i.e. attack/fire/hit frame
 // flashstate, muzzle flash
 //
-weaponinfo_t	weaponinfo[NUMWEAPONS] =
+int numweapons = NUMWEAPONS;
+
+weaponinfo_t weaponinfo[MAX_WEAPON_COUNT] =
 {
     {
 	// fist
-	am_noammo,
-	S_PUNCHUP,
-	S_PUNCHDOWN,
-	S_PUNCH,
-	S_PUNCH1,
-	S_NULL
+	.ammo = am_noammo,
+	.upstate = S_PUNCHUP,
+	.downstate = S_PUNCHDOWN,
+	.readystate = S_PUNCH,
+	.atkstate = S_PUNCH1,
+	.flashstate = S_NULL,
+	.sel_order = 3700,
+	.slot = 1,
     },	
     {
 	// pistol
-	am_clip,
-	S_PISTOLUP,
-	S_PISTOLDOWN,
-	S_PISTOL,
-	S_PISTOL1,
-	S_PISTOLFLASH
+	.ammo = am_clip,
+	.upstate = S_PISTOLUP,
+	.downstate = S_PISTOLDOWN,
+	.readystate = S_PISTOL,
+	.atkstate = S_PISTOL1,
+	.flashstate = S_PISTOLFLASH,
+	.ammo_use = 1,
+	.sel_order = 1900,
+	.slot = 2,
     },	
     {
 	// shotgun
-	am_shell,
-	S_SGUNUP,
-	S_SGUNDOWN,
-	S_SGUN,
-	S_SGUN1,
-	S_SGUNFLASH1
+	.ammo = am_shell,
+	.upstate = S_SGUNUP,
+	.downstate = S_SGUNDOWN,
+	.readystate = S_SGUN,
+	.atkstate = S_SGUN1,
+	.flashstate = S_SGUNFLASH1,
+	.ammo_use = 1,
+	.sel_order = 1300,
+	.slot = 3,
     },
     {
 	// chaingun
-	am_clip,
-	S_CHAINUP,
-	S_CHAINDOWN,
-	S_CHAIN,
-	S_CHAIN1,
-	S_CHAINFLASH1
+	.ammo = am_clip,
+	.upstate = S_CHAINUP,
+	.downstate = S_CHAINDOWN,
+	.readystate = S_CHAIN,
+	.atkstate = S_CHAIN1,
+	.flashstate = S_CHAINFLASH1,
+	.ammo_use = 1,
+	.sel_order = 700,
+	.slot = 4,
     },
     {
 	// missile launcher
-	am_misl,
-	S_MISSILEUP,
-	S_MISSILEDOWN,
-	S_MISSILE,
-	S_MISSILE1,
-	S_MISSILEFLASH1
+	.ammo = am_misl,
+	.upstate = S_MISSILEUP,
+	.downstate = S_MISSILEDOWN,
+	.readystate = S_MISSILE,
+	.atkstate = S_MISSILE1,
+	.flashstate = S_MISSILEFLASH1,
+	.ammo_use = 1,
+	.sel_order = 2500,
+	.slot = 5,
     },
     {
 	// plasma rifle
-	am_cell,
-	S_PLASMAUP,
-	S_PLASMADOWN,
-	S_PLASMA,
-	S_PLASMA1,
-	S_PLASMAFLASH1
+	.ammo = am_cell,
+	.upstate = S_PLASMAUP,
+	.downstate = S_PLASMADOWN,
+	.readystate = S_PLASMA,
+	.atkstate = S_PLASMA1,
+	.flashstate = S_PLASMAFLASH1,
+	.ammo_use = 1,
+	.sel_order = 100,
+	.slot = 6,
     },
     {
 	// bfg 9000
-	am_cell,
-	S_BFGUP,
-	S_BFGDOWN,
-	S_BFG,
-	S_BFG1,
-	S_BFGFLASH1
+	.ammo = am_cell,
+	.upstate = S_BFGUP,
+	.downstate = S_BFGDOWN,
+	.readystate = S_BFG,
+	.atkstate = S_BFG1,
+	.flashstate = S_BFGFLASH1,
+	.ammo_use = 40, // this is modified by DEHACKED
+	.sel_order = 2800,
+	.slot = 7,
     },
     {
 	// chainsaw
-	am_noammo,
-	S_SAWUP,
-	S_SAWDOWN,
-	S_SAW,
-	S_SAW1,
-	S_NULL
+	.ammo = am_noammo,
+	.upstate = S_SAWUP,
+	.downstate = S_SAWDOWN,
+	.readystate = S_SAW,
+	.atkstate = S_SAW1,
+	.flashstate = S_NULL,
+	.sel_order = 2200,
+	.slot = 1,
     },
     {
 	// super shotgun
-	am_shell,
-	S_DSGUNUP,
-	S_DSGUNDOWN,
-	S_DSGUN,
-	S_DSGUN1,
-	S_DSGUNFLASH1
+	.ammo = am_shell,
+	.upstate = S_DSGUNUP,
+	.downstate = S_DSGUNDOWN,
+	.readystate = S_DSGUN,
+	.atkstate = S_DSGUN1,
+	.flashstate = S_DSGUNFLASH1,
+	.ammo_use = 2,
+	.sel_order = 400,
+	.slot = 3,
     },	
 };
 

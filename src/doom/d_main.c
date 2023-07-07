@@ -79,6 +79,8 @@
 
 #include "d_main.h"
 
+#include "doomhack.h"
+
 #include "doom_icon.c"
 
 //
@@ -2025,6 +2027,17 @@ void D_DoomMain (void)
         }
 
         printf("  loaded %i DEHACKED lumps from PWAD files.\n", loaded);
+    }
+
+    //!
+    // @category mod
+    //
+    // Disable automatic loading of DOOMHACK patches
+    //
+    if (!M_ParmExists("-nodh"))
+    {
+	// NOTE: this has to be done after DEHACKED
+        dh_init();
     }
 
     // [crispy] process .deh files from PWADs autoload directories

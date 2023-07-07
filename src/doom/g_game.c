@@ -80,6 +80,8 @@
 #include "deh_main.h" // [crispy] for demo footer
 #include "memio.h"
 
+#include "doomhack.h"
+
 #define SAVEGAMESIZE	0x2c000
 
 void	G_ReadDemoTiccmd (ticcmd_t* cmd); 
@@ -278,7 +280,7 @@ static boolean WeaponSelectable(weapontype_t weapon)
 
     // Can't select a weapon if we don't own it.
 
-    if (!players[consoleplayer].weaponowned[weapon])
+    if (!P_CheckWeaponOwned(players + consoleplayer, weapon))
     {
         return false;
     }
@@ -286,8 +288,9 @@ static boolean WeaponSelectable(weapontype_t weapon)
     // Can't select the fist if we have the chainsaw, unless
     // we also have the berserk pack.
 
-    if (weapon == wp_fist
-     && players[consoleplayer].weaponowned[wp_chainsaw]
+    if ( !doomhack_active
+     && weapon == wp_fist
+     && players[consoleplayer].orwa.weapon[wp_chainsaw]
      && !players[consoleplayer].powers[pw_strength])
     {
         return false;
@@ -1468,13 +1471,12 @@ void G_PlayerReborn (int player)
     // [crispy] negative player health
     p->neghealth = p->health;
     p->readyweapon = p->pendingweapon = wp_pistol; 
-    p->weaponowned[wp_fist] = true; 
-    p->weaponowned[wp_pistol] = true; 
-    p->ammo[am_clip] = deh_initial_bullets; 
-	 
-    for (i=0 ; i<NUMAMMO ; i++) 
-	p->maxammo[i] = maxammo[i]; 
-		 
+    P_SetWeaponOwned(p, wp_fist, 1);
+    P_SetWeaponOwned(p, wp_pistol, 1);
+    P_SetAmmoCount(p, am_clip, deh_initial_bullets);
+
+    for(i = 0; i < numammo; i++)
+	P_SetAmmoMax(p, i, ammoinfo[i].amax);
 }
 
 //

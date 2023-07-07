@@ -29,7 +29,7 @@
 
 #include "p_mobj.h"
 
-const char *sprnames[] = {
+const char *sprnames[MAX_SPRITE_COUNT+1] = {
     "TROO","SHTG","PUNG","PISG","PISF","SHTF","SHT2","CHGG","CHGF","MISG",
     "MISF","SAWG","PLSG","PLSF","BFGG","BFGF","BLUD","PUFF","BAL1","BAL2",
     "PLSS","PLSE","MISL","BFS1","BFE1","BFE2","TFOG","IFOG","PLAY","POSS",
@@ -146,8 +146,10 @@ void A_Detonate();
 void A_Mushroom();
 void A_BetaSkullAttack();
 
+int numstates = NUMSTATES;
+state_t *states = states_code;
 
-state_t	states[NUMSTATES] = {
+state_t	states_code[NUMSTATES] = {
     {SPR_TROO,0,-1,{NULL},S_NULL,0,0},	// S_NULL
     {SPR_SHTG,4,0,{A_Light0},S_NULL,0,0},	// S_LIGHTDONE
     {SPR_PUNG,0,1,{A_WeaponReady},S_PUNCH,0,0},	// S_PUNCH
@@ -1204,7 +1206,10 @@ state_t	states[NUMSTATES] = {
 };
 
 
-mobjinfo_t mobjinfo[NUMMOBJTYPES] = {
+int nummobjtypes = NUMMOBJTYPES;
+mobjinfo_t *mobjinfo = mobjinfo_code;
+
+mobjinfo_t mobjinfo_code[NUMMOBJTYPES] = {
 
     {		// MT_PLAYER	"OUR HERO"
 	-1,		// doomednum

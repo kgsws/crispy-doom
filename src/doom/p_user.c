@@ -32,6 +32,7 @@
 
 #include "s_sound.h" // [NS] Jump sound etc.
 
+#include "doomhack.h"
 
 // Index of the special effects (INVUL inverse) map.
 #define INVERSECOLORMAP		32
@@ -49,6 +50,147 @@ static const fixed_t crispy_bobfactor[3] = {4, 3, 0};
 
 boolean		onground;
 
+//
+// P_CheckWeaponOwned
+// Check if player owns specific weapon.
+boolean P_CheckWeaponOwned(player_t *pl, int idx)
+{
+	if(doomhack_active)
+	{
+		if(idx > 32)
+			return 0;
+		return !!(pl->dhwa.weapon & (1 << idx));
+	} else
+		return pl->orwa.weapon[idx];
+}
+
+//
+// P_CheckWeaponOwned
+// Give player specific weapon.
+void P_SetWeaponOwned(player_t *pl, int idx, int yes)
+{
+	if(idx >= numweapons)
+		return;
+
+	if(doomhack_active)
+	{
+		if(yes)
+			pl->dhwa.weapon |= 1 << idx;
+		else
+			pl->dhwa.weapon &= ~(1 << idx);
+	} else
+		pl->orwa.weapon[idx] = !!yes;
+}
+
+//
+// P_WeaponOwnedBits
+// Generate weapon ownership bitmap. Used in status bar.
+unsigned int P_WeaponOwnedBits(player_t *pl)
+{
+	unsigned int ret = 0;
+
+	if(doomhack_active)
+		return pl->dhwa.weapon;
+
+	for(int i = 0; i < NUMWEAPONS; i++)
+		if(pl->orwa.weapon[i])
+			ret |= 1 << i;
+
+	return ret;
+}
+
+//
+// P_GetAmmoCount
+// Check how much ammo player has.
+int P_GetAmmoCount(player_t *pl, int idx)
+{
+	if(idx >= numammo)
+		return 0;
+
+	if(doomhack_active)
+		return pl->dhwa.ammonow[idx];
+	else
+		return pl->orwa.ammonow[idx];
+}
+
+//
+// P_SetAmmoCount
+// Set how much ammo player has.
+void P_SetAmmoCount(player_t *pl, int idx, int count)
+{
+	if(idx >= numammo)
+		return;
+
+	if(doomhack_active)
+		pl->dhwa.ammonow[idx] = count;
+	else
+		pl->orwa.ammonow[idx] = count;
+}
+
+//
+// P_GetAmmoMax
+// Check player ammo limit.
+int P_GetAmmoMax(player_t *pl, int idx)
+{
+	if(idx >= numammo)
+		return 0;
+
+	if(doomhack_active)
+		return pl->dhwa.ammomax[idx];
+	else
+		return pl->orwa.ammomax[idx];
+}
+
+//
+// P_SetAmmoMax
+// Set player ammo limit.
+void P_SetAmmoMax(player_t *pl, int idx, int count)
+{
+	if(idx >= numammo)
+		return;
+
+	if(doomhack_active)
+		pl->dhwa.ammomax[idx] = count;
+	else
+		pl->orwa.ammomax[idx] = count;
+}
+
+
+//
+// P_CheckBestWeapon
+// Find best usable (owned, with ammo) weapon to use.
+int P_CheckBestWeapon(player_t *pl)
+{
+	int ret = wp_fist; // this is a failsafe
+	int order = INT_MAX;
+
+	for(int i = 0; i < numweapons; i++)
+	{
+		int ammo_type;
+		weaponinfo_t *wi;
+
+		if(!P_CheckWeaponOwned(pl, i))
+			continue;
+
+		wi = weaponinfo + i;
+
+		if(wi->sel_order > order)
+			continue;
+
+		ammo_type = wi->ammo;
+
+		if(ammo_type < numammo)
+		{
+			if(P_GetAmmoCount(pl, ammo_type) < wi->ammo_use)
+				continue;
+		}
+
+		ret = i;
+		order = wi->sel_order;
+	}
+
+	return ret;
+}
 
 //
 // P_Thrust
@@ -399,35 +541,63 @@ void P_PlayerThink (player_t* player)
 	//  when the weapon psprite can do it
 	//  (read: not in the middle of an attack).
 	newweapon = (cmd->buttons&BT_WEAPONMASK)>>BT_WEAPONSHIFT;
-	
-	if (newweapon == wp_fist
-	    && player->weaponowned[wp_chainsaw]
-	    && !(player->readyweapon == wp_chainsaw
-		 && player->powers[pw_strength]))
-	{
-	    newweapon = wp_chainsaw;
-	}
-	
-	if ( (crispy->havessg)
-	    && newweapon == wp_shotgun 
-	    && player->weaponowned[wp_supershotgun]
-	    && player->readyweapon != wp_supershotgun)
-	{
-	    newweapon = wp_supershotgun;
-	}
-	
 
-	if (player->weaponowned[newweapon]
-	    && newweapon != player->readyweapon)
+	if(doomhack_active)
 	{
-	    // Do not go to plasma or BFG in shareware,
-	    //  even if cheated.
-	    if ((newweapon != wp_plasma
-		 && newweapon != wp_bfg)
-		|| (gamemode != shareware) )
-	    {
-		player->pendingweapon = newweapon;
-	    }
+		int idx = numweapons;
+
+		// slot ID
+		newweapon++;
+
+		// check where to start looking
+		if(weaponinfo[player->readyweapon].slot == newweapon)
+			idx = player->readyweapon;
+
+		// find next weapon for this slot
+		for(int i = 0; i < numweapons; i++)
+		{
+			idx--;
+			if(idx < 0)
+				idx = numweapons - 1;
+
+			if(	weaponinfo[idx].slot == newweapon &&
+				P_CheckWeaponOwned(player, idx)
+			){
+				if(idx != player->readyweapon)
+					player->pendingweapon = idx;
+				break;
+			}
+		}
+	} else
+	{
+		if (newweapon == wp_fist
+			&& player->orwa.weapon[wp_chainsaw]
+			&& !(player->readyweapon == wp_chainsaw
+			&& player->powers[pw_strength]))
+		{
+			newweapon = wp_chainsaw;
+		}
+
+		if ( (crispy->havessg)
+			&& newweapon == wp_shotgun 
+			&& player->orwa.weapon[wp_supershotgun]
+			&& player->readyweapon != wp_supershotgun)
+		{
+			newweapon = wp_supershotgun;
+		}
+
+		if (player->orwa.weapon[newweapon]
+			&& newweapon != player->readyweapon)
+		{
+			// Do not go to plasma or BFG in shareware,
+			//  even if cheated.
+			if ((newweapon != wp_plasma
+			&& newweapon != wp_bfg)
+			|| (gamemode != shareware) )
+			{
+				player->pendingweapon = newweapon;
+			}
+		}
 	}
     }
     

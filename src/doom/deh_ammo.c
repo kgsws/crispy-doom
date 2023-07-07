@@ -42,7 +42,7 @@ static void *DEH_AmmoStart(deh_context_t *context, char *line)
         return NULL;
     }
     
-    return &maxammo[ammo_number];
+    return ammoinfo + ammo_number;
 }
 
 static void DEH_AmmoParseLine(deh_context_t *context, char *line, void *tag)
@@ -54,7 +54,7 @@ static void DEH_AmmoParseLine(deh_context_t *context, char *line, void *tag)
     if (tag == NULL)
         return;
 
-    ammo_number = ((int *) tag) - maxammo;
+    ammo_number = ((ammoinfo_t*)tag) - ammoinfo;
 
     // Parse the assignment
 
@@ -71,9 +71,9 @@ static void DEH_AmmoParseLine(deh_context_t *context, char *line, void *tag)
     // maxammo
 
     if (!strcasecmp(variable_name, "Per ammo"))
-        clipammo[ammo_number] = ivalue;
+        ammoinfo[ammo_number].clip = ivalue;
     else if (!strcasecmp(variable_name, "Max ammo"))
-        maxammo[ammo_number] = ivalue;
+        ammoinfo[ammo_number].amax = ivalue;
     else
     {
         DEH_Warning(context, "Field named '%s' not found", variable_name);
@@ -86,8 +86,8 @@ static void DEH_AmmoSHA1Hash(sha1_context_t *context)
 
     for (i=0; i<NUMAMMO; ++i)
     {
-        SHA1_UpdateInt32(context, clipammo[i]);
-        SHA1_UpdateInt32(context, maxammo[i]);
+        SHA1_UpdateInt32(context, ammoinfo[i].clip);
+        SHA1_UpdateInt32(context, ammoinfo[i].amax);
     }
 }
 

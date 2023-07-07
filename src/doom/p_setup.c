@@ -45,6 +45,8 @@
 
 #include "p_extnodes.h" // [crispy] support extended node formats
 
+#include "doomhack.h"
+
 void	P_SpawnMapThing (mapthing_t*	mthing);
 
 
@@ -1117,7 +1119,10 @@ P_SetupLevel
     int		lumpnum;
     boolean	crispy_validblockmap;
     mapformat_t	crispy_mapformat;
-	
+
+    // [kg] reset DOOMHACK
+    dh_reset_level();
+
     totalkills = totalitems = totalsecret = wminfo.maxfrags = 0;
     // [crispy] count spawned monsters
     extrakills = 0;

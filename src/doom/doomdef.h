@@ -116,11 +116,11 @@ typedef enum
     wp_supershotgun,
 
     NUMWEAPONS,
-    
-    // No pending weapon change.
-    wp_nochange
 
 } weapontype_t;
+
+// No pending weapon change.
+#define wp_nochange	(numweapons + 1)
 
 
 // Ammunition types defined.
@@ -131,10 +131,10 @@ typedef enum
     am_cell,	// Plasma rifle, BFG.
     am_misl,	// Missile launcher.
     NUMAMMO,
-    am_noammo	// Unlimited for chainsaw / fist.	
 
 } ammotype_t;
 
+#define am_noammo	0xFFFF	// Unlimited for chainsaw / fist.	
 
 // Power up artifacts.
 typedef enum
@@ -152,7 +152,10 @@ typedef enum
     
 } powertype_t;
 
-
+//
+// [kg] DOOMHACK limits; do not change
+#define MAX_WEAPON_COUNT	32
+#define MAX_AMMO_COUNT	16
 
 //
 // Power up durations,

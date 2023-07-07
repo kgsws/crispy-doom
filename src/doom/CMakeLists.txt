@@ -13,6 +13,8 @@ add_library(doom STATIC
             deh_sound.c
             deh_thing.c
             deh_weapon.c
+            doomhack.c      doomhack.h
+            dh_action.c
                             d_englsh.h
             d_items.c       d_items.h
             d_main.c        d_main.h
@@ -31,6 +33,7 @@ add_library(doom STATIC
             hu_lib.c        hu_lib.h
             hu_stuff.c      hu_stuff.h
             info.c          info.h
+            kgcbor.c        kgcbor.h
                             m_background.h
             m_crispy.c      m_crispy.h
             m_menu.c        m_menu.h

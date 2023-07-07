@@ -233,7 +233,10 @@ void R_InitSpriteDefs(const char **namelist)
     // Just compare 4 characters as ints
     for (i=0 ; i<numsprites ; i++)
     {
-	spritename = DEH_String(namelist[i]);
+	if(i < NUMSPRITES)
+	    spritename = DEH_String(namelist[i]);
+	else
+	    spritename = namelist[i];
 	memset (sprtemp,-1, sizeof(sprtemp));
 		
 	maxframe = -1;
@@ -872,7 +875,7 @@ static void R_DrawLSprite (void)
     static int		lump;
     static patch_t*	patch;
 
-    if (weaponinfo[viewplayer->readyweapon].ammo == am_noammo ||
+    if (weaponinfo[viewplayer->readyweapon].ammo >= numammo ||
         viewplayer->playerstate != PST_LIVE)
 	return;
 

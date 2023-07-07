@@ -64,6 +64,8 @@
 
 #include "v_trans.h" // [crispy] colored cheat messages
 
+#include "doomhack.h"
+
 extern int screenblocks; // [crispy] for the Crispy HUD
 extern boolean inhelpscreens; // [crispy] prevent palette changes
 
@@ -363,8 +365,13 @@ static st_binicon_t	w_armsbg;
 
 // weapon ownership widgets
 static st_multicon_t	w_arms[6];
-// [crispy] show SSG availability in the Shotgun slot of the arms widget
-static int st_shotguns;
+
+// [kg] weapons in any slot
+static int st_arms[6];
+
+// [kg] base ammo count
+static int st_ammonow[4];
+static int st_ammomax[4];
 
 // face status widget
 static st_multicon_t	w_faces; 
@@ -390,7 +397,7 @@ static int	st_fragscount;
 static int	st_oldhealth = -1;
 
 // used for evil grin
-static boolean	oldweaponsowned[NUMWEAPONS]; 
+static unsigned int	oldweaponsowned; 
 
  // count until face changes
 static int	st_facecount = 0;
@@ -685,6 +692,12 @@ static int ST_cheat_spechits()
 // [crispy] only give available weapons
 static boolean WeaponAvailable (int w)
 {
+	if(w >= numweapons)
+		return false;
+
+	if(doomhack_active)
+		return weaponinfo[w].upstate && weaponinfo[w].readystate;
+
 	if (w < 0 || w >= NUMWEAPONS)
 	    return false;
 
@@ -704,18 +717,18 @@ static void GiveBackpack (boolean give)
 
 	if (give && !plyr->backpack)
 	{
-		for (i = 0; i < NUMAMMO; i++)
+		for(i = 0; i < numammo; i++)
 		{
-			plyr->maxammo[i] *= 2;
+			P_SetAmmoMax(plyr, i, ammoinfo[i].amax_bkpk);
 		}
 		plyr->backpack = true;
 	}
 	else
 	if (!give && plyr->backpack)
 	{
-		for (i = 0; i < NUMAMMO; i++)
+		for(i = 0; i < numammo; i++)
 		{
-			plyr->maxammo[i] /= 2;
+			P_SetAmmoMax(plyr, i, ammoinfo[i].amax);
 		}
 		plyr->backpack = false;
 	}
@@ -798,12 +811,12 @@ ST_Responder (event_t* ev)
 	// [crispy] give backpack
 	GiveBackpack(true);
 
-	for (i=0;i<NUMWEAPONS;i++)
+	for (i=0;i<MAX_WEAPON_COUNT;i++)
 	 if (WeaponAvailable(i)) // [crispy] only give available weapons
-	  plyr->weaponowned[i] = true;
+	  P_SetWeaponOwned(plyr, i, 1);
 	
-	for (i=0;i<NUMAMMO;i++)
-	  plyr->ammo[i] = plyr->maxammo[i];
+	for (i=0;i<numammo;i++)
+	  P_SetAmmoCount(plyr, i, P_GetAmmoMax(plyr, i));
 	
 	// [crispy] trigger evil grin now
 	plyr->bonuscount += 2;
@@ -819,12 +832,12 @@ ST_Responder (event_t* ev)
 	// [crispy] give backpack
 	GiveBackpack(true);
 
-	for (i=0;i<NUMWEAPONS;i++)
+	for (i=0;i<MAX_WEAPON_COUNT;i++)
 	 if (WeaponAvailable(i)) // [crispy] only give available weapons
-	  plyr->weaponowned[i] = true;
+	  P_SetWeaponOwned(plyr, i, 1);
 	
-	for (i=0;i<NUMAMMO;i++)
-	  plyr->ammo[i] = plyr->maxammo[i];
+	for (i=0;i<numammo;i++)
+	  P_SetAmmoCount(plyr, i, P_GetAmmoMax(plyr, i));
 	
 	for (i=0;i<NUMCARDS;i++)
 	  plyr->cards[i] = true;
@@ -954,7 +967,7 @@ ST_Responder (event_t* ev)
       // 'choppers' invulnerability & chainsaw
       else if (cht_CheckCheatSP(&cheat_choppers, ev->data2))
       {
-	plyr->weaponowned[wp_chainsaw] = true;
+	P_SetWeaponOwned(plyr, wp_chainsaw, 1);
 	plyr->powers[pw_invulnerability] = true;
 	plyr->message = DEH_String(STSTR_CHOPPERS);
       }
@@ -1079,18 +1092,20 @@ ST_Responder (event_t* ev)
 	    GiveBackpack(false);
 	    plyr->powers[pw_strength] = 0;
 
-	    for (i = 0; i < NUMWEAPONS; i++)
+	    for (i = 0; i < numweapons; i++)
 	    {
-		oldweaponsowned[i] = plyr->weaponowned[i] = false;
+		P_SetWeaponOwned(plyr, i, 0);
 	    }
-	    oldweaponsowned[wp_fist] = plyr->weaponowned[wp_fist] = true;
-	    oldweaponsowned[wp_pistol] = plyr->weaponowned[wp_pistol] = true;
+	    P_SetWeaponOwned(plyr, wp_fist, 1);
+	    P_SetWeaponOwned(plyr, wp_pistol, 1);
 
-	    for (i = 0; i < NUMAMMO; i++)
+	    oldweaponsowned = 0;
+
+	    for (i = 0; i < numammo; i++)
 	    {
-		plyr->ammo[i] = 0;
+		P_SetAmmoCount(plyr, i, 0);
 	    }
-	    plyr->ammo[am_clip] = deh_initial_bullets;
+	    P_SetAmmoCount(plyr, am_clip, deh_initial_bullets);
 
 	    if (plyr->readyweapon > wp_pistol)
 	    {
@@ -1123,7 +1138,7 @@ ST_Responder (event_t* ev)
 	}
 	else
 	{
-	    if (!plyr->weaponowned[w])
+	    if(!P_CheckWeaponOwned(plyr, w))
 	    {
 		extern boolean P_GiveWeapon (player_t* player, weapontype_t weapon, boolean dropped);
 		extern const char *const WeaponPickupMessages[NUMWEAPONS];
@@ -1142,13 +1157,12 @@ ST_Responder (event_t* ev)
 	    else
 	    {
 		// [crispy] no reason for evil grin
-		oldweaponsowned[w] = plyr->weaponowned[w] = false;
+		P_SetWeaponOwned(plyr, w, 0);
+		oldweaponsowned &= ~(1 << w);
 
 		// [crispy] removed current weapon, select another one
 		if (w == plyr->readyweapon)
 		{
-		    extern boolean P_CheckAmmo (player_t* player);
-
 		    P_CheckAmmo(plyr);
 		}
 	    }
@@ -1158,7 +1172,7 @@ ST_Responder (event_t* ev)
 	{
 	    M_snprintf(msg, sizeof(msg), "Weapon %s%d%s %s",
 	               crstr[CR_GOLD], w + 1, crstr[CR_NONE],
-	               plyr->weaponowned[w] ? "added" : "removed");
+	               P_CheckWeaponOwned(plyr, w) ? "added" : "removed");
 	    plyr->message = msg;
 	}
       }
@@ -1422,17 +1436,17 @@ void ST_updateFaceWidget(void)
     {
 	if (plyr->bonuscount)
 	{
+	    unsigned int bits = P_WeaponOwnedBits(plyr);
+
 	    // picking up bonus
 	    doevilgrin = false;
 
-	    for (i=0;i<NUMWEAPONS;i++)
+	    if (oldweaponsowned != bits)
 	    {
-		if (oldweaponsowned[i] != plyr->weaponowned[i])
-		{
-		    doevilgrin = true;
-		    oldweaponsowned[i] = plyr->weaponowned[i];
-		}
+		doevilgrin = true;
+		oldweaponsowned = bits;
 	    }
+
 	    // [crispy] no evil grin in god mode
 	    if (doevilgrin && !invul)
 	    {
@@ -1580,15 +1594,19 @@ void ST_updateFaceWidget(void)
 void ST_updateWidgets(void)
 {
     static int	largeammo = 1994; // means "n/a"
+    static int	displayammo;
     int		i;
 
     // must redirect the pointer if the ready weapon has changed.
     //  if (w_ready.data != plyr->readyweapon)
     //  {
-    if (weaponinfo[plyr->readyweapon].ammo == am_noammo)
+    if (weaponinfo[plyr->readyweapon].ammo >= numammo)
 	w_ready.num = &largeammo;
     else
-	w_ready.num = &plyr->ammo[weaponinfo[plyr->readyweapon].ammo];
+    {
+	displayammo = P_GetAmmoCount(plyr, weaponinfo[plyr->readyweapon].ammo);
+	w_ready.num = &displayammo;
+    }
     //{
     // static int tic=0;
     // static int dir=-1;
@@ -1789,14 +1807,15 @@ static byte* ST_WidgetColor(int i)
     {
         case hudcolor_ammo:
         {
-            if (weaponinfo[plyr->readyweapon].ammo == am_noammo)
+            if (weaponinfo[plyr->readyweapon].ammo >= numammo)
             {
                 return NULL;
             }
             else
             {
-                int ammo =  plyr->ammo[weaponinfo[plyr->readyweapon].ammo];
-                int fullammo = maxammo[weaponinfo[plyr->readyweapon].ammo];
+		int at = weaponinfo[plyr->readyweapon].ammo;
+                int ammo = P_GetAmmoCount(plyr, at);
+                int fullammo = P_GetAmmoMax(plyr, at);
 
                 if (ammo < fullammo/4)
                     return cr[CR_RED];
@@ -1983,8 +2002,35 @@ void ST_drawWidgets(boolean refresh)
 
     STlib_updateBinIcon(&w_armsbg, refresh);
 
-    // [crispy] show SSG availability in the Shotgun slot of the arms widget
-    st_shotguns = plyr->weaponowned[wp_shotgun] | plyr->weaponowned[wp_supershotgun];
+    // [kg] base ammo count
+    if(doomhack_active)
+    {
+	for(i = 0; i < 4; i++)
+	{
+		st_ammonow[i] = plyr->dhwa.ammonow[i];
+		st_ammomax[i] = plyr->dhwa.ammomax[i];
+	}
+    } else
+    {
+	for(i = 0; i < 4; i++)
+	{
+		st_ammonow[i] = plyr->orwa.ammonow[i];
+		st_ammomax[i] = plyr->orwa.ammomax[i];
+	}
+    }
+
+    // [kg] weapons in any slot
+    memset(st_arms, 0, sizeof(st_arms));
+    for(i = 0; i < numweapons; i++)
+    {
+	weaponinfo_t *info = weaponinfo + i;
+
+	if(	info->slot >= 2 &&
+		info->slot <= 7 &&
+		P_CheckWeaponOwned(plyr, i)
+	)
+		st_arms[info->slot - 2] = 1;
+    }
 
     for (i=0;i<6;i++)
 	STlib_updateMultIcon(&w_arms[i], refresh);
@@ -2239,8 +2285,7 @@ void ST_initData(void)
 
     st_oldhealth = -1;
 
-    for (i=0;i<NUMWEAPONS;i++)
-	oldweaponsowned[i] = plyr->weaponowned[i];
+    oldweaponsowned = P_WeaponOwnedBits(plyr);
 
     for (i=0;i<3;i++)
 	keyboxes[i] = -1;
@@ -2265,7 +2310,7 @@ void ST_createWidgets(void)
 		  ST_AMMOX,
 		  ST_AMMOY,
 		  tallnum,
-		  &plyr->ammo[weaponinfo[plyr->readyweapon].ammo],
+		  NULL,
 		  &st_statusbaron,
 		  ST_AMMOWIDTH );
 
@@ -2296,11 +2341,9 @@ void ST_createWidgets(void)
                            ST_ARMSX+(i%3)*ST_ARMSXSPACE,
                            ST_ARMSY+(i/3)*ST_ARMSYSPACE,
                            arms[i],
-                           &plyr->weaponowned[i+1],
+                           &st_arms[i],
                            &st_armson);
     }
-    // [crispy] show SSG availability in the Shotgun slot of the arms widget
-    w_arms[1].inum = &st_shotguns;
 
     // frags sum
     STlib_initNum(&w_frags,
@@ -2354,7 +2397,7 @@ void ST_createWidgets(void)
 		  ST_AMMO0X,
 		  ST_AMMO0Y,
 		  shortnum,
-		  &plyr->ammo[0],
+		  &st_ammonow[0],
 		  &st_statusbaron,
 		  ST_AMMO0WIDTH);
 
@@ -2362,7 +2405,7 @@ void ST_createWidgets(void)
 		  ST_AMMO1X,
 		  ST_AMMO1Y,
 		  shortnum,
-		  &plyr->ammo[1],
+		  &st_ammonow[1],
 		  &st_statusbaron,
 		  ST_AMMO1WIDTH);
 
@@ -2370,7 +2413,7 @@ void ST_createWidgets(void)
 		  ST_AMMO2X,
 		  ST_AMMO2Y,
 		  shortnum,
-		  &plyr->ammo[2],
+		  &st_ammonow[2],
 		  &st_statusbaron,
 		  ST_AMMO2WIDTH);
     
@@ -2378,7 +2421,7 @@ void ST_createWidgets(void)
 		  ST_AMMO3X,
 		  ST_AMMO3Y,
 		  shortnum,
-		  &plyr->ammo[3],
+		  &st_ammonow[3],
 		  &st_statusbaron,
 		  ST_AMMO3WIDTH);
 
@@ -2387,7 +2430,7 @@ void ST_createWidgets(void)
 		  ST_MAXAMMO0X,
 		  ST_MAXAMMO0Y,
 		  shortnum,
-		  &plyr->maxammo[0],
+		  &st_ammomax[0],
 		  &st_statusbaron,
 		  ST_MAXAMMO0WIDTH);
 
@@ -2395,7 +2438,7 @@ void ST_createWidgets(void)
 		  ST_MAXAMMO1X,
 		  ST_MAXAMMO1Y,
 		  shortnum,
-		  &plyr->maxammo[1],
+		  &st_ammomax[1],
 		  &st_statusbaron,
 		  ST_MAXAMMO1WIDTH);
 
@@ -2403,7 +2446,7 @@ void ST_createWidgets(void)
 		  ST_MAXAMMO2X,
 		  ST_MAXAMMO2Y,
 		  shortnum,
-		  &plyr->maxammo[2],
+		  &st_ammomax[2],
 		  &st_statusbaron,
 		  ST_MAXAMMO2WIDTH);
     
@@ -2411,7 +2454,7 @@ void ST_createWidgets(void)
 		  ST_MAXAMMO3X,
 		  ST_MAXAMMO3Y,
 		  shortnum,
-		  &plyr->maxammo[3],
+		  &st_ammomax[3],
 		  &st_statusbaron,
 		  ST_MAXAMMO3WIDTH);
 
